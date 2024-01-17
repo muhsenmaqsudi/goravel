@@ -18,7 +18,7 @@ func (c *Goravel) routes() http.Handler {
 	mux.Use(middleware.Recoverer)
 
 	mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Welcome to Celeritas")
+		fmt.Fprint(w, "Welcome to Goravel")
 	})
 
 	return mux

@@ -1,9 +1,16 @@
 package main
 
-import "github.com/muhsenmaqsudi/goravel"
+import (
+	"myapp/data"
+	"myapp/handlers"
+
+	"github.com/muhsenmaqsudi/goravel"
+)
 
 type application struct {
-	App *goravel.Goravel
+	App      *goravel.Goravel
+	Handlers *handlers.Handlers
+	Models   data.Models
 }
 
 func main() {

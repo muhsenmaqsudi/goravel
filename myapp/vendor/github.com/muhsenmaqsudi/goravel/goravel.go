@@ -14,6 +14,8 @@ import (
 
 const version string = "1.0.0"
 
+// Goravel is the overall type for the Goravel package. Members that are exported in this type
+// are available to any application that uses it.
 type Goravel struct {
 	AppName  string
 	Debug    bool
@@ -22,18 +24,21 @@ type Goravel struct {
 	InfoLog  *log.Logger
 	RootPath string
 	Routes   *chi.Mux
+	DB       Database
 	config   config
 }
 
 type config struct {
 	port     string
-	renderer string
+	database databaseConfig
 }
 
+// New reads the .env file, creates our application config, populates the Celeritas type with settings
+// based on .env values, and creates necessary folders and files if they don't exist
 func (c *Goravel) New(rootPath string) error {
 	pathConfig := initPaths{
 		rootPath:    rootPath,
-		folderNames: []string{"handlers", "migrations", "views", "data", "public", "tmp", "logs", "middleware"},
+		folderNames: []string{"handlers", "migrations", "data", "tmp", "logs", "middleware"},
 	}
 
 	err := c.Init(pathConfig)
@@ -55,6 +60,19 @@ func (c *Goravel) New(rootPath string) error {
 	// create loggers
 	infoLog, errLog := c.startLoggers()
 
+	// connect to database
+	if os.Getenv("DATABASE_TYPE") != "" {
+		db, err := c.OpenDB(os.Getenv("DATABASE_TYPE"), c.BuildDSN())
+		if err != nil {
+			c.ErrorLog.Println(err)
+			os.Exit(1)
+		}
+		c.DB = Database{
+			DataType: os.Getenv("DATABASE_TYPE"),
+			Pool:     db,
+		}
+	}
+
 	c.InfoLog = infoLog
 	c.ErrorLog = errLog
 	c.Debug, _ = strconv.ParseBool(os.Getenv("DEBUG"))
@@ -63,8 +81,11 @@ func (c *Goravel) New(rootPath string) error {
 	c.Routes = c.routes().(*chi.Mux)
 
 	c.config = config{
-		port:     os.Getenv("PORT"),
-		renderer: os.Getenv("RENDERER"),
+		port: os.Getenv("PORT"),
+		database: databaseConfig{
+			database: os.Getenv("DATABASE_TYPE"),
+			dsn:      c.BuildDSN(),
+		},
 	}
 
 	return nil
@@ -86,11 +107,13 @@ func (c *Goravel) ListenAndServe() {
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", os.Getenv("PORT")),
 		ErrorLog:     c.ErrorLog,
-		Handler:      c.routes(),
+		Handler:      c.Routes,
 		IdleTimeout:  30 * time.Second,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 600 * time.Second,
 	}
+
+	defer c.DB.Pool.Close()
 
 	c.InfoLog.Printf("Listening on port %s", os.Getenv("PORT"))
 	err := srv.ListenAndServe()
@@ -113,4 +136,26 @@ func (c *Goravel) startLoggers() (*log.Logger, *log.Logger) {
 	errorLog = log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
 	return infoLog, errorLog
+}
+
+func (c *Goravel) BuildDSN() string {
+	var dsn string
+
+	switch os.Getenv("DATABASE_TYPE") {
+	case "postgres", "postgresql":
+		dsn = fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=%s timezone=UTC connect_timeout=5",
+			os.Getenv("DATABASE_HOST"),
+			os.Getenv("DATABASE_PORT"),
+			os.Getenv("DATABASE_USER"),
+			os.Getenv("DATABASE_NAME"),
+			os.Getenv("DATABASE_SSL_MODE"))
+
+		if os.Getenv("DATABASE_PASS") != "" {
+			dsn = fmt.Sprintf("%s password=%s", dsn, os.Getenv("DATABASE_PASS"))
+		}
+	default:
+
+	}
+
+	return dsn
 }

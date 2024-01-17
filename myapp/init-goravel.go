@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"myapp/data"
+	"myapp/handlers"
 	"os"
 
 	"github.com/muhsenmaqsudi/goravel"
@@ -21,11 +23,18 @@ func initApplication() *application {
 
 	cel.AppName = "myApp"
 
-	cel.InfoLog.Println("Debug is set to", cel.Debug)
-
-	app := &application{
+	myHandlers := &handlers.Handlers{
 		App: cel,
 	}
+
+	app := &application{
+		App:      cel,
+		Handlers: myHandlers,
+	}
+
+	app.App.Routes = app.routes()
+
+	app.Models = data.New(app.App.DB.Pool)
 
 	return app
 }
