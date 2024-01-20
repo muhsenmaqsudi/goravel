@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"myapp/data"
 	"net/http"
 
 	"github.com/muhsenmaqsudi/goravel"
@@ -9,6 +10,7 @@ import (
 
 type Handlers struct {
 	App *goravel.Goravel
+	Models data.Models
 }
 
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
