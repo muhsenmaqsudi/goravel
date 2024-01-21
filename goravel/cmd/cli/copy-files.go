@@ -31,3 +31,10 @@ func copyDataToFile(data []byte, to string) error {
 
 	return nil
 }
+
+func fileExists(fileToCheck string) bool {
+	if _, err := os.Stat(fileToCheck); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}

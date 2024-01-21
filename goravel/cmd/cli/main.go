@@ -75,9 +75,14 @@ func validateInput() (string, string, string, error) {
 
 func showHelp() {
 	color.Yellow(`Available commands:
-	help				- show the help commands
-	version			-	print application version
-
+	help				  				- show the help commands
+	version			  				-	print application version
+	migrate			  				- runs all up migrations that have not been run previously
+	migrate down  				- reverses the most recent migration
+	migrate reset 				- runs all down migrations in reverse order, and then all up migrations
+	make migration <name> - create two new up and down migrations in the migrations folder
+	make handler <name>		- creates a stub handler in the handlers directory
+	make model <name>			- creates a new model in the models directory
 	`)
 }
 
