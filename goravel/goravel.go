@@ -26,6 +26,7 @@ type Goravel struct {
 	Routes   *chi.Mux
 	DB       Database
 	config   config
+	EncryptionKey string
 }
 
 type config struct {
@@ -84,9 +85,11 @@ func (c *Goravel) New(rootPath string) error {
 		port: os.Getenv("PORT"),
 		database: databaseConfig{
 			database: os.Getenv("DATABASE_TYPE"),
-			dsn:      c.BuildDSN(),
+			dsn: c.BuildDSN(),
 		},
 	}
+
+	c.EncryptionKey = os.Getenv("KEY")
 
 	return nil
 }

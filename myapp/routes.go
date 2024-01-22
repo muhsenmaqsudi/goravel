@@ -13,7 +13,9 @@ func (a *application) routes() *chi.Mux {
 	// middleware must come before any routes
 
 	// add routes here
-	a.App.Routes.Get("/", a.Handlers.Home)
+	a.get("/", a.Handlers.Home)
+
+	a.get("/json", a.Handlers.JSON)
 
 	a.App.Routes.Get("/create-user", func(w http.ResponseWriter, r *http.Request) {
 		u := data.User{
@@ -63,6 +65,20 @@ func (a *application) routes() *chi.Mux {
 			return
 		}
 		u.LastName = a.App.RandomString(10)
+		u.LastName = ""
+
+		validator := a.App.Validator(nil)
+		
+		u.Validate(validator)
+
+
+		validator.Check(len(u.LastName) > 20, "last_name", "Last name must be 20 chars or more")
+
+		if !validator.Valid() {
+			fmt.Fprint(w, "failed validation")
+			return
+		}
+
 		err = u.Update(*u)
 		if err != nil {
 			a.App.ErrorLog.Println(err)
