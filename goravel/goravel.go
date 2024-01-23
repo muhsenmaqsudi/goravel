@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/gomodule/redigo/redis"
 	"github.com/joho/godotenv"
+	"github.com/muhsenmaqsudi/goravel/cache"
 )
 
 const version string = "1.0.0"
@@ -17,21 +19,23 @@ const version string = "1.0.0"
 // Goravel is the overall type for the Goravel package. Members that are exported in this type
 // are available to any application that uses it.
 type Goravel struct {
-	AppName  string
-	Debug    bool
-	Version  string
-	ErrorLog *log.Logger
-	InfoLog  *log.Logger
-	RootPath string
-	Routes   *chi.Mux
-	DB       Database
-	config   config
+	AppName       string
+	Debug         bool
+	Version       string
+	ErrorLog      *log.Logger
+	InfoLog       *log.Logger
+	RootPath      string
+	Routes        *chi.Mux
+	DB            Database
+	config        config
 	EncryptionKey string
+	Cache         cache.Cache
 }
 
 type config struct {
 	port     string
 	database databaseConfig
+	redis    redisConfig
 }
 
 // New reads the .env file, creates our application config, populates the Celeritas type with settings
@@ -74,6 +78,11 @@ func (c *Goravel) New(rootPath string) error {
 		}
 	}
 
+	if os.Getenv("CACHE") == "redis" {
+		myRedisCache := c.createClientRedisCache()
+		c.Cache = myRedisCache
+	}
+
 	c.InfoLog = infoLog
 	c.ErrorLog = errLog
 	c.Debug, _ = strconv.ParseBool(os.Getenv("DEBUG"))
@@ -85,7 +94,12 @@ func (c *Goravel) New(rootPath string) error {
 		port: os.Getenv("PORT"),
 		database: databaseConfig{
 			database: os.Getenv("DATABASE_TYPE"),
-			dsn: c.BuildDSN(),
+			dsn:      c.BuildDSN(),
+		},
+		redis: redisConfig{
+			host:     os.Getenv("REDIS_HOST"),
+			password: os.Getenv("REDIS_PASSWORD"),
+			prefix:   os.Getenv("REDIS_PREFIX"),
 		},
 	}
 
@@ -139,6 +153,31 @@ func (c *Goravel) startLoggers() (*log.Logger, *log.Logger) {
 	errorLog = log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
 	return infoLog, errorLog
+}
+
+func (c *Goravel) createClientRedisCache() *cache.RedisCache {
+	cacheClient := cache.RedisCache{
+		Conn:   c.createRedisPool(),
+		Prefix: c.config.redis.prefix,
+	}
+	return &cacheClient
+}
+
+func (c *Goravel) createRedisPool() *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   10000,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp",
+				c.config.redis.host,
+				redis.DialPassword(c.config.redis.password))
+		},
+		TestOnBorrow: func(conn redis.Conn, t time.Time) error {
+			_, err := conn.Do("PING")
+			return err
+		},
+	}
 }
 
 func (c *Goravel) BuildDSN() string {

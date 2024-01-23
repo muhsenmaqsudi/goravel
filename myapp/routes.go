@@ -17,6 +17,11 @@ func (a *application) routes() *chi.Mux {
 
 	a.get("/json", a.Handlers.JSON)
 
+	a.post("/api/save-in-cache", a.Handlers.SaveInCache)
+	a.post("/api/get-from-cache", a.Handlers.GetFromCache)
+	a.post("/api/delete-from-cache", a.Handlers.DeleteFromCache)
+	a.post("/api/empty-cache", a.Handlers.EmptyCache)
+
 	a.App.Routes.Get("/create-user", func(w http.ResponseWriter, r *http.Request) {
 		u := data.User{
 			FirstName: "Muhsen",
@@ -68,9 +73,8 @@ func (a *application) routes() *chi.Mux {
 		u.LastName = ""
 
 		validator := a.App.Validator(nil)
-		
-		u.Validate(validator)
 
+		u.Validate(validator)
 
 		validator.Check(len(u.LastName) > 20, "last_name", "Last name must be 20 chars or more")
 
